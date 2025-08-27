@@ -15,3 +15,5 @@ langdetect
 gtts
 pandas
 python-docx
+openpyxl
+
