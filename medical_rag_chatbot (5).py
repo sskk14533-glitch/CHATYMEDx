@@ -1,16 +1,14 @@
 
 import os
 import streamlit as st
-import pickle
 from PIL import Image
 import pandas as pd
-from gtts import gTTS
-import PyPDF2
-from typing import Optional
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 EXCEL_PATH = "Book3.xlsx"
 
-# ===== تحميل بيانات الأدوية والكلمات المفتاحية =====
+# ===== تحميل بيانات الأدوية من Excel =====
 @st.cache_data
 def load_drugs_data(excel_path):
     try:
@@ -40,34 +38,19 @@ def search_in_excel(query, drugs_df, keywords_df):
             return "keyword", kw_match.drop(columns=["keyword"], errors="ignore")
     return None, None
 
-# ===== استخراج نص من PDF =====
-def extract_text_from_pdf(file_path):
-    text = ""
-    try:
-        with open(file_path, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
-            for page in reader.pages:
-                text += page.extract_text() + "\n"
-    except Exception as e:
-        st.error(f"❌ خطأ في قراءة ملف PDF: {e}")
-    return text
-
-# ===== تحويل النص إلى صوت =====
-def text_to_speech(text, filename="output.mp3"):
-    try:
-        tts = gTTS(text=text, lang="en")
-        tts.save(filename)
-        return filename
-    except Exception as e:
-        st.error(f"❌ خطأ في تحويل النص إلى صوت: {e}")
-        return None
+# ===== تحميل وتقطيع ملفات PDF =====
+def load_medical_docs(file_path):
+    loader = PyPDFLoader(file_path)
+    docs = loader.load()
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    return splitter.split_documents(docs)
 
 # ===== التطبيق الرئيسي =====
 def main():
     st.set_page_config(page_title="CHATYMEDx", layout="centered")
     st.markdown("<h1 style='text-align: center; color: #cba37d;'>CHATYMEDx</h1>", unsafe_allow_html=True)
 
-    # تحميل بيانات الأدوية من Excel
+    # تحميل بيانات الأدوية
     if os.path.exists(EXCEL_PATH):
         drugs_df, keywords_df, display_drugs_df = load_drugs_data(EXCEL_PATH)
     else:
@@ -82,21 +65,21 @@ def main():
         image_file = st.file_uploader("Image", type=["png", "jpg", "jpeg"])
 
     # التعامل مع PDF
-    pdf_text = ""
     if pdf_file:
-        with st.spinner("📄 Extracting text from PDF..."):
+        with st.spinner("📄 Loading PDF..."):
             with open("temp_medical.pdf", "wb") as f:
                 f.write(pdf_file.read())
-            pdf_text = extract_text_from_pdf("temp_medical.pdf")
-            st.text_area("📄 PDF Text", pdf_text, height=300)
+            docs = load_medical_docs("temp_medical.pdf")
+            st.success(f"✅ PDF loaded with {len(docs)} chunks.")
+            st.write(docs[:3])  # عرض أول 3 أجزاء كمثال
 
-    # التعامل مع صورة
+    # التعامل مع الصور
     if image_file:
         image = Image.open(image_file)
         st.image(image, caption="The uploaded image", use_container_width=True)
 
     # إدخال اسم الدواء أو كلمة مفتاحية
-    query = st.text_input("Write drug name or keyword:")
+    query = st.text_input("Write drug name:")
     if query:
         if drugs_df is not None and keywords_df is not None:
             kind, result_df = search_in_excel(query, drugs_df, keywords_df)
@@ -107,17 +90,11 @@ def main():
                     st.success(f"✅ Found related drug(s) for your keyword")
                 st.dataframe(result_df)
             else:
-                st.warning("⚠️ لم يتم العثور على نتيجة في Excel.")
-
-    # تحويل النص الموجود في PDF إلى صوت
-    if pdf_text:
-        if st.button("🔊 Convert PDF text to speech"):
-            audio_file = text_to_speech(pdf_text)
-            if audio_file:
-                st.audio(audio_file, format="audio/mp3")
+                st.warning("⚠️ لم يتم العثور على الدواء أو الكلمة المفتاحية.")
 
 if __name__ == "__main__":
     main()
+
 
 
 
