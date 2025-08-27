@@ -2,7 +2,6 @@
 import os
 import streamlit as st
 import pickle
-import pytesseract
 from PIL import Image
 from langdetect import detect
 import pandas as pd
@@ -18,32 +17,33 @@ from gtts import gTTS
 INDEX_PATH = "faiss_index.pkl"
 EXCEL_PATH = "Book3.xlsx"
 
+# ===== معالجة pytesseract بطريقة آمنة على Cloud =====
+try:
+    import pytesseract
+    TESSERACT_AVAILABLE = True
+except ImportError:
+    TESSERACT_AVAILABLE = False
+
 # ===== تحميل بيانات الأدوية والكلمات المفتاحية من Excel =====
 def load_drugs_data(excel_path):
     try:
-        # شيت الأدوية
         drugs_df = pd.read_excel(excel_path, sheet_name="Drugs", header=0)
         drugs_df.columns = drugs_df.columns.str.strip().str.lower()
-        drugs_df = drugs_df.loc[:, ~drugs_df.columns.str.contains('^unnamed', case=False)]  # تنظيف Unnamed
+        drugs_df = drugs_df.loc[:, ~drugs_df.columns.str.contains('^unnamed', case=False)]
 
         if "drug" not in drugs_df.columns:
             st.error(f"❌ مفيش عمود 'Drug' في شيت Drugs. الأعمدة: {drugs_df.columns.tolist()}")
             return None, None, None
 
-        # شيت الكلمات المفتاحية (نبدأ من الصف التاني)
         keywords_df = pd.read_excel(excel_path, sheet_name="Keywords", header=1)
         keywords_df.columns = keywords_df.columns.str.strip().str.lower()
-        keywords_df = keywords_df.loc[:, ~keywords_df.columns.str.contains('^unnamed', case=False)]  # تنظيف Unnamed
+        keywords_df = keywords_df.loc[:, ~keywords_df.columns.str.contains('^unnamed', case=False)]
 
-        # التأكد إن الأعمدة المطلوبة موجودة
         if not set(["keyword", "drug"]).issubset(keywords_df.columns):
             st.error(f"❌ الأعمدة المطلوبة مش موجودة في شيت Keywords. الأعمدة اللي لقيتها: {keywords_df.columns.tolist()}")
             return None, None, None
 
-        # نسخة للعرض
         display_drugs_df = drugs_df.copy()
-
-        # تجهيز للبحث (lowercase + strip)
         drugs_df["drug"] = drugs_df["drug"].astype(str).str.strip().str.lower()
         keywords_df["keyword"] = keywords_df["keyword"].astype(str).str.strip().str.lower()
         keywords_df["drug"] = keywords_df["drug"].astype(str).str.strip().str.lower()
@@ -54,25 +54,21 @@ def load_drugs_data(excel_path):
         st.error(f"❌ خطأ في قراءة ملف الإكسيل: {e}")
         return None, None, None
 
-
 # ===== البحث في الأدوية أو الكلمات المفتاحية =====
 def search_in_excel(query, drugs_df, keywords_df):
     query = query.lower().strip()
 
-    # البحث في شيت Drugs → يرجّع كل الأعمدة الخاصة بالدواء
     if drugs_df is not None and "drug" in drugs_df.columns:
         match = drugs_df[drugs_df["drug"].str.contains(query, na=False)]
         if not match.empty:
             return "drug", match
 
-    # البحث في شيت Keywords → يرجّع الأعمدة من شيت Keywords فقط (من غير keyword)
     if keywords_df is not None and {"keyword", "drug"}.issubset(keywords_df.columns):
         kw_match = keywords_df[keywords_df["keyword"].str.contains(query, na=False)]
         if not kw_match.empty:
             return "keyword", kw_match.drop(columns=["keyword"], errors="ignore")
 
     return None, None
-
 
 # ===== تحميل وتقطيع ملفات PDF الطبية =====
 def load_medical_docs(file_path):
@@ -84,9 +80,9 @@ def load_medical_docs(file_path):
 # ===== تضمين النصوص =====
 def embed_documents(docs):
     embed_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-    model_kwargs={'device': 'cpu'}
-)
+        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        model_kwargs={'device': 'cpu'}
+    )
     return FAISS.from_documents(docs, embed_model)
 
 # ===== حفظ واسترجاع قاعدة البيانات =====
@@ -115,9 +111,14 @@ def build_qa_system(faiss_index):
     llm = ChatGroq(api_key=os.getenv("GROQ_API_KEY"), model_name="llama3-8b-8192")
     return RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
-# ===== استخراج النص من الصور =====
+# ===== استخراج النص من الصور بطريقة آمنة =====
 def extract_text_from_image(image):
-    return pytesseract.image_to_string(image, lang="ara+eng")
+    if not TESSERACT_AVAILABLE:
+        return "⚠️ خاصية استخراج النص من الصور غير متوفرة على Streamlit Cloud."
+    try:
+        return pytesseract.image_to_string(image, lang="ara+eng")
+    except:
+        return "⚠️ حدث خطأ أثناء استخراج النص من الصورة."
 
 # ===== الكشف عن اللغة =====
 def detect_language(text):
@@ -152,7 +153,6 @@ def main():
     st.set_page_config(page_title="CHATYMEDx", layout="centered")
     st.markdown("<h1 style='text-align: center; color: #cba37d;'>CHATYMEDx</h1>", unsafe_allow_html=True)
 
-    # تحميل أو إنشاء قاعدة البيانات
     if "qa_chain" not in st.session_state:
         if os.path.exists(INDEX_PATH):
             index = load_index()
@@ -163,7 +163,6 @@ def main():
                 save_index(index)
         st.session_state.qa_chain = build_qa_system(index)
 
-    # تحميل بيانات الأدوية من Excel
     drugs_df, keywords_df, display_drugs_df = load_drugs_data(EXCEL_PATH)
 
     # ===== الشريط الجانبي =====
@@ -191,9 +190,8 @@ def main():
     if image_file:
         image = Image.open(image_file)
         st.image(image, caption="The uploaded image", use_container_width=True)
-        with st.spinner("🧠 Extracting text from image..."):
-            extracted_text = extract_text_from_image(image)
-            st.text_area("Extracted text from image:", value=extracted_text, height=150)
+        extracted_text = extract_text_from_image(image)
+        st.text_area("Extracted text from image:", value=extracted_text, height=150)
 
     # ===== إدخال اسم الدواء أو كلمة مفتاحية =====
     query = st.text_input("Write drug name :")
@@ -206,9 +204,8 @@ def main():
                 st.success(f"✅ Found drug: {query}")
             elif kind == "keyword":
                 st.success(f"✅ Found related drug(s) for your keyword")
-            st.dataframe(result_df)  # يعرض بيانات الدواء أو الأدوية بدون keyword وبدون Unnamed
+            st.dataframe(result_df)
         else:
-            # fallback للـ QA system
             lang = detect_language(query)
             simplified_query = simplify_prompt(query, lang)
             result = ask_medical_qa(simplified_query)
