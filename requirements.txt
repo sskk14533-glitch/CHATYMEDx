@@ -1,0 +1,17 @@
+streamlit
+faiss-cpu
+sentence-transformers
+langchain-community
+langchain
+langchain-groq
+groq
+pyngrok
+pypdf
+arabic-reshaper
+python-bidi
+pillow
+pytesseract
+langdetect
+gtts
+pandas
+python-docx
