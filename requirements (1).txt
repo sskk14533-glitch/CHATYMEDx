@@ -1,14 +1,26 @@
-streamlit
-pandas
-openpyxl
-python-docx
-pillow
-langdetect
-gtts
-arabic-reshaper
-python-bidi
-pypdf
-pyngrok
+streamlit==1.28.1
+pandas==2.1.3
+openpyxl==3.1.2
+pillow==10.1.0
+pytesseract==0.3.10
+langdetect==1.0.9
+faiss-cpu==1.7.4
+sentence-transformers==2.2.2
+langchain==0.0.340
+langchain-community==0.0.5
+langchain-huggingface==0.0.1
+langchain-groq==0.0.1
+groq==0.4.1
+gtts==2.4.0
+pypdf2==3.0.1
+pypdf==3.0.1
+transformers==4.35.2
+torch==2.1.1+cpu --find-links https://download.pytorch.org/whl/torch_stable.html
+tokenizers==0.15.0
+huggingface-hub==0.19.4
+numpy==1.24.3
+scikit-learn==1.3.2
+requests==2.31.0
 
 
 
