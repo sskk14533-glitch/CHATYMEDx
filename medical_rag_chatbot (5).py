@@ -3,19 +3,54 @@ import os
 import streamlit as st
 import pickle
 from PIL import Image
-from langdetect import detect
+
+# ===== التحقق من توفر langdetect =====
+try:
+    from langdetect import detect
+    LANGDETECT_AVAILABLE = True
+except ImportError:
+    LANGDETECT_AVAILABLE = False
+
 import pandas as pd
 from docx import Document
-from langchain.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.chains import RetrievalQA
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_groq import ChatGroq
-from gtts import gTTS
+import tempfile
+import io
+
+# استيراد pytesseract مع معالجة الأخطاء
+try:
+    import pytesseract
+    TESSERACT_AVAILABLE = True
+except ImportError:
+    TESSERACT_AVAILABLE = False
+    st.warning("⚠️ Tesseract غير متوفر - خاصية استخراج النص من الصور معطلة")
+
+# استيراد مكتبات LangChain مع معالجة الأخطاء
+try:
+    from langchain.vectorstores import FAISS
+    from langchain.embeddings import HuggingFaceEmbeddings
+    from langchain.chains import RetrievalQA
+    from langchain.document_loaders import PyPDFLoader
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    from langchain_groq import ChatGroq
+    LANGCHAIN_AVAILABLE = True
+except ImportError:
+    LANGCHAIN_AVAILABLE = False
+    st.error("❌ مكتبات LangChain غير متوفرة")
+
+# استيراد gTTS مع معالجة الأخطاء
+try:
+    from gtts import gTTS
+    GTTS_AVAILABLE = True
+except ImportError:
+    GTTS_AVAILABLE = False
 
 INDEX_PATH = "faiss_index.pkl"
 EXCEL_PATH = "Book3.xlsx"
+
+# ===== باقي الكود كما هو مع تعديل استخدام detect =====
+# أي مكان تستخدم detect:
+# lang = detect(query) if LANGDETECT_AVAILABLE else "unknown"
+
 
 # ===== معالجة pytesseract بطريقة آمنة على Cloud =====
 try:
