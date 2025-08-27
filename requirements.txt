@@ -1,21 +1,20 @@
-streamlit
-faiss-cpu
-sentence-transformers
+streamlit==1.27.0
+faiss-cpu==1.7.4
+sentence-transformers==2.2.2
 langchain==0.1.20
-langchain-groq
-groq
-pyngrok
-pypdf
-arabic-reshaper
-python-bidi
-pillow
-pytesseract
-langdetect
-gtts
-pandas
-python-docx
-openpyxl
-
+langchain-groq==0.0.8
+groq==0.1.14
+pyngrok==5.2.1
+pypdf==3.13.0
+arabic-reshaper==2.1.4
+python-bidi==0.4.2
+Pillow==10.0.1
+pytesseract==0.3.10
+langdetect==1.0.9
+gtts==2.3.2
+pandas==2.1.1
+python-docx==0.8.11
+openpyxl==3.1.3
 
 
 
