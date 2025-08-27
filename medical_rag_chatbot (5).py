@@ -3,7 +3,7 @@ import os
 import streamlit as st
 from PIL import Image
 import pandas as pd
-import PyPDF2
+from pypdf import PdfReader  # استخدم pypdf بدل PyPDF2
 
 EXCEL_PATH = "Book3.xlsx"
 
@@ -41,10 +41,9 @@ def search_in_excel(query, drugs_df, keywords_df):
 def load_pdf_text(file_path):
     try:
         text = ""
-        with open(file_path, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
-            for page in reader.pages:
-                text += page.extract_text() + "\n"
+        reader = PdfReader(file_path)
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
         return text
     except Exception as e:
         st.error(f"❌ خطأ في قراءة ملف PDF: {e}")
@@ -99,5 +98,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
