@@ -3,7 +3,6 @@ import os
 import streamlit as st
 import pickle
 from PIL import Image
-from langdetect import detect
 import pandas as pd
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -129,10 +128,12 @@ def extract_text_from_image(image):
 
 # ===== الكشف عن اللغة =====
 def detect_language(text):
-    try:
-        return detect(text)
-    except:
-        return "unknown"
+    # فحص بسيط للغة العربية
+    arabic_chars = sum(1 for char in text if '\u0600' <= char <= '\u06FF')
+    if arabic_chars > len(text) * 0.3:  # إذا أكثر من 30% من النص عربي
+        return "ar"
+    else:
+        return "en"
 
 # ===== تبسيط الاستعلام بناء على اللغة =====
 def simplify_prompt(query, lang):
