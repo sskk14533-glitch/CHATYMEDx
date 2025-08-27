@@ -1,20 +1,21 @@
 streamlit
-faiss-cpu
-sentence-transformers
-langchain==0.1.20
-langchain-groq
-groq
-pyngrok
-pypdf
-arabic-reshaper
-python-bidi
-pillow
-pytesseract
-langdetect
-gtts
 pandas
 python-docx
 openpyxl
+pillow
+langdetect
+gtts
+arabic-reshaper
+python-bidi
+pypdf
+pyngrok
+langchain==0.1.20
+langchain-groq
+groq
+sentence-transformers
+faiss-cpu
+pytesseract
+
 
 
 
