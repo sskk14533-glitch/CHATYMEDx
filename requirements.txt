@@ -16,4 +16,6 @@ gtts
 pandas
 python-docx
 openpyxl
+langchain==0.1.20
+
 
