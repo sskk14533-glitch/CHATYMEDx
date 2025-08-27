@@ -1,21 +1,14 @@
 
 import os
 import streamlit as st
-import pickle
 from PIL import Image
 import pandas as pd
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.chains import RetrievalQA
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.llms.base import LLM
-from langchain.callbacks.manager import CallbackManagerForLLMRun
 from gtts import gTTS
 import requests
 from typing import Optional, List, Any
 
-INDEX_PATH = "chroma_db"  # مجلد حفظ قاعدة بيانات Chroma
 EXCEL_PATH = "Book3.xlsx"
 
 # ===== تحميل بيانات الأدوية والكلمات المفتاحية =====
@@ -55,71 +48,14 @@ def load_medical_docs(file_path):
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     return splitter.split_documents(docs)
 
-# ===== تضمين النصوص =====
-@st.cache_resource
-def get_embeddings():
-    return HuggingFaceEmbeddings(
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-        model_kwargs={'device': 'cpu'}
-    )
+# ===== Groq LLM مخصص (معطل البحث المتقدم) =====
+class GroqLLM:
+    def __init__(self, api_key: str, model_name: str = "llama3-8b-8192"):
+        self.api_key = api_key
+        self.model_name = model_name
 
-def embed_documents(docs):
-    embed_model = get_embeddings()
-    return Chroma.from_documents(docs, embedding=embed_model, persist_directory=INDEX_PATH)
-
-# ===== حفظ واسترجاع قاعدة البيانات =====
-def save_index(index):
-    index.persist()  # Chroma يخزن البيانات داخليًا
-
-@st.cache_resource
-def load_index():
-    if os.path.exists(INDEX_PATH):
-        return Chroma(persist_directory=INDEX_PATH, embedding_function=get_embeddings())
-    return None
-
-def update_index(new_docs):
-    index = load_index()
-    if index:
-        index.add_documents(new_docs)
-        index.persist()
-    else:
-        index = embed_documents(new_docs)
-    return index
-
-# ===== Groq LLM مخصص =====
-class GroqLLM(LLM):
-    api_key: str
-    model_name: str = "llama3-8b-8192"
-
-    @property
-    def _llm_type(self) -> str:
-        return "groq"
-
-    def _call(self, prompt: str, stop: Optional[List[str]] = None,
-              run_manager: Optional[CallbackManagerForLLMRun] = None, **kwargs: Any) -> str:
-        try:
-            headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-            data = {"messages": [{"role": "user", "content": prompt}],
-                    "model": self.model_name, "max_tokens": 500, "temperature": 0.3}
-            response = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                                     headers=headers, json=data, timeout=30)
-            if response.status_code == 200:
-                return response.json()["choices"][0]["message"]["content"]
-            else:
-                return "⚠️ حدث خطأ في الاتصال بـ Groq API"
-        except Exception as e:
-            return f"⚠️ خطأ: {str(e)}"
-
-# ===== إنشاء نظام الأسئلة والأجوبة =====
-@st.cache_resource
-def build_qa_system(chroma_index):
-    retriever = chroma_index.as_retriever(search_type="similarity", k=4)
-    groq_api_key = os.getenv("GROQ_API_KEY")
-    if not groq_api_key:
-        st.error("❌ يرجى إضافة GROQ_API_KEY في متغيرات البيئة")
-        return None
-    llm = GroqLLM(api_key=groq_api_key)
-    return RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+    def run(self, prompt: str) -> str:
+        return "⚠️ ميزة البحث المتقدم مع Groq غير مفعلة في النسخة الحالية."
 
 # ===== التطبيق الرئيسي =====
 def main():
@@ -142,15 +78,13 @@ def main():
 
     # التعامل مع PDF
     if pdf_file:
-        with st.spinner("📄 Loading and embedding the file..."):
+        with st.spinner("📄 Loading the file..."):
             with open("temp_medical.pdf", "wb") as f:
                 f.write(pdf_file.read())
             docs = load_medical_docs("temp_medical.pdf")
-            index = update_index(docs)
-            st.session_state.qa_chain = build_qa_system(index)
-            st.success("✅ File embedded and added to memory.")
+            st.success(f"✅ PDF loaded successfully ({len(docs)} pages/chunks).")
 
-    # التعامل مع صورة (ميزة استخراج النص معطلة)
+    # التعامل مع صورة
     if image_file:
         image = Image.open(image_file)
         st.image(image, caption="The uploaded image", use_container_width=True)
@@ -168,13 +102,10 @@ def main():
                     st.success(f"✅ Found related drug(s) for your keyword")
                 st.dataframe(result_df)
             else:
-                if "qa_chain" in st.session_state:
-                    result = st.session_state.qa_chain.run(query)
-                    st.markdown(f"### Your answer: {result}")
-                else:
-                    st.warning("⚠️ يرجى رفع ملف PDF طبي أولاً أو إضافة GROQ_API_KEY.")
+                st.warning("⚠️ لم يتم العثور على معلومات في Excel. ميزة البحث المتقدم غير متاحة.")
 
 if __name__ == "__main__":
     main()
+
 
 
