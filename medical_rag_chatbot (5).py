@@ -3,18 +3,29 @@ import os
 import streamlit as st
 import pickle
 from PIL import Image
-
-
 import pandas as pd
+
+# ===== التأكد من مكتبة openpyxl =====
+try:
+    import openpyxl
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
+    st.warning("⚠️ مكتبة openpyxl غير موجودة. قراءة ملفات Excel ستكون معطلة.")
 
 # ===== تحميل بيانات الأدوية والكلمات المفتاحية =====
 EXCEL_PATH = "Book3.xlsx"
 
 def load_drugs_data(excel_path):
+    if not OPENPYXL_AVAILABLE:
+        st.error("❌ لا يمكن قراءة ملف الإكسيل بدون مكتبة openpyxl")
+        return None, None, None
+
     try:
         if not os.path.exists(excel_path):
             st.warning(f"⚠️ ملف الإكسيل {excel_path} غير موجود")
             return None, None, None
+
         drugs_df = pd.read_excel(excel_path, sheet_name="Drugs", header=0)
         drugs_df.columns = drugs_df.columns.str.strip().str.lower()
         keywords_df = pd.read_excel(excel_path, sheet_name="Keywords", header=1)
@@ -58,6 +69,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
