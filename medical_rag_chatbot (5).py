@@ -4,13 +4,60 @@ import streamlit as st
 import pickle
 from PIL import Image
 import pandas as pd
-from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
-from langchain_community.document_loaders import PyPDFLoader
+from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_groq import ChatGroq
+from langchain.llms.base import LLM
+from langchain.callbacks.manager import CallbackManagerForLLMRun
 from gtts import gTTS
+import requests
+from typing import Optional, List, Any
+
+# ===== Groq LLM مخصص =====
+class GroqLLM(LLM):
+    api_key: str
+    model_name: str = "llama3-8b-8192"
+    
+    @property
+    def _llm_type(self) -> str:
+        return "groq"
+    
+    def _call(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> str:
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "messages": [{"role": "user", "content": prompt}],
+                "model": self.model_name,
+                "max_tokens": 500,
+                "temperature": 0.3
+            }
+            
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"]
+            else:
+                return "⚠️ حدث خطأ في الاتصال بـ Groq API"
+                
+        except Exception as e:
+            return f"⚠️ خطأ: {str(e)}"
 
 INDEX_PATH = "faiss_index.pkl"
 EXCEL_PATH = "Book3.xlsx"
@@ -118,7 +165,14 @@ def update_index(new_docs):
 @st.cache_resource
 def build_qa_system(faiss_index):
     retriever = faiss_index.as_retriever(search_type="similarity", k=4)
-    llm = ChatGroq(api_key=os.getenv("GROQ_API_KEY"), model_name="llama3-8b-8192")
+    
+    # إنشاء Groq LLM
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    if not groq_api_key:
+        st.error("❌ يرجى إضافة GROQ_API_KEY في متغيرات البيئة")
+        return None
+        
+    llm = GroqLLM(api_key=groq_api_key, model_name="llama3-8b-8192")
     return RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
 # ===== استخراج النص من الصور معطل =====
@@ -236,24 +290,22 @@ def main():
             else:
                 # fallback للـ QA system
                 if "qa_chain" in st.session_state:
-                    lang = detect_language(query)
-                    simplified_query = simplify_prompt(query, lang)
-                    result = ask_medical_qa(simplified_query)
+                    with st.spinner("🤖 جاري البحث في المراجع الطبية..."):
+                        lang = detect_language(query)
+                        simplified_query = simplify_prompt(query, lang)
+                        result = ask_medical_qa(simplified_query)
 
-                    if lang == "ar":
-                        st.markdown(f"<div dir='rtl' style='text-align: right; font-size: 18px;'>{result}</div>", unsafe_allow_html=True)
-                        st.markdown("<div dir='rtl' style='text-align: right; font-size: 14px; color:gray;'>ملاحظة: هذه الخدمة لا تُعتبر بديلاً عن الاستشارة الطبية.</div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"### Your answer: {result}")
-                        st.markdown("Note: This service is not a substitute for professional medical advice.")
+                        if lang == "ar":
+                            st.markdown(f"<div dir='rtl' style='text-align: right; font-size: 18px;'>{result}</div>", unsafe_allow_html=True)
+                            st.markdown("<div dir='rtl' style='text-align: right; font-size: 14px; color:gray;'>ملاحظة: هذه الخدمة لا تُعتبر بديلاً عن الاستشارة الطبية.</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"### Your answer: {result}")
+                            st.markdown("Note: This service is not a substitute for professional medical advice.")
                 else:
-                    st.warning("⚠️ يرجى رفع ملف PDF طبي أولاً.")
+                    st.warning("⚠️ يرجى رفع ملف PDF طبي أولاً أو إضافة GROQ_API_KEY في متغيرات البيئة.")
         else:
             st.warning("⚠️ لم يتم تحميل بيانات الأدوية.")
 
 if __name__ == "__main__":
     main()
-
-
-
 
