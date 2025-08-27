@@ -55,7 +55,7 @@ def main():
 
     drugs_df, keywords_df, _ = load_drugs_data(EXCEL_PATH)
 
-    query = st.text_input("Write drug name or keyword:")
+    query = st.text_input("Write drug name:")
 
     if query:
         kind, result_df = search_in_excel(query, drugs_df, keywords_df)
