@@ -3,19 +3,7 @@ import os
 import streamlit as st
 import pickle
 from PIL import Image
-try:
-    from langdetect import detect
-    LANGDETECT_AVAILABLE = True
-except ImportError:
-    LANGDETECT_AVAILABLE = False
-    st.warning("⚠️ مكتبة langdetect غير متوفرة - الكشف عن اللغة معطل")
 
-try:
-    from docx import Document
-    DOCX_AVAILABLE = True
-except ImportError:
-    DOCX_AVAILABLE = False
-    st.warning("⚠️ مكتبة python-docx غير متوفرة - قراءة ملفات Word معطلة")
 
 import pandas as pd
 
