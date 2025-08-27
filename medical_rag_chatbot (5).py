@@ -3,8 +3,7 @@ import os
 import streamlit as st
 from PIL import Image
 import pandas as pd
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+import PyPDF2
 
 EXCEL_PATH = "Book3.xlsx"
 
@@ -38,12 +37,18 @@ def search_in_excel(query, drugs_df, keywords_df):
             return "keyword", kw_match.drop(columns=["keyword"], errors="ignore")
     return None, None
 
-# ===== تحميل وتقطيع ملفات PDF =====
-def load_medical_docs(file_path):
-    loader = PyPDFLoader(file_path)
-    docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    return splitter.split_documents(docs)
+# ===== تحميل PDF =====
+def load_pdf_text(file_path):
+    try:
+        text = ""
+        with open(file_path, "rb") as f:
+            reader = PyPDF2.PdfReader(f)
+            for page in reader.pages:
+                text += page.extract_text() + "\n"
+        return text
+    except Exception as e:
+        st.error(f"❌ خطأ في قراءة ملف PDF: {e}")
+        return ""
 
 # ===== التطبيق الرئيسي =====
 def main():
@@ -69,9 +74,9 @@ def main():
         with st.spinner("📄 Loading PDF..."):
             with open("temp_medical.pdf", "wb") as f:
                 f.write(pdf_file.read())
-            docs = load_medical_docs("temp_medical.pdf")
-            st.success(f"✅ PDF loaded with {len(docs)} chunks.")
-            st.write(docs[:3])  # عرض أول 3 أجزاء كمثال
+            pdf_text = load_pdf_text("temp_medical.pdf")
+            st.success(f"✅ PDF loaded with {len(pdf_text.splitlines())} lines.")
+            st.text_area("PDF content preview:", pdf_text[:2000], height=300)
 
     # التعامل مع الصور
     if image_file:
@@ -94,7 +99,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 
 
