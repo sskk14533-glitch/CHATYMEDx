@@ -1,13 +1,12 @@
 
 import os
 import streamlit as st
+import pickle
 from PIL import Image
 import pandas as pd
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from gtts import gTTS
-import requests
-from typing import Optional, List, Any
+import PyPDF2
+from typing import Optional
 
 EXCEL_PATH = "Book3.xlsx"
 
@@ -41,21 +40,27 @@ def search_in_excel(query, drugs_df, keywords_df):
             return "keyword", kw_match.drop(columns=["keyword"], errors="ignore")
     return None, None
 
-# ===== تحميل وتقطيع ملفات PDF =====
-def load_medical_docs(file_path):
-    loader = PyPDFLoader(file_path)
-    docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    return splitter.split_documents(docs)
+# ===== استخراج نص من PDF =====
+def extract_text_from_pdf(file_path):
+    text = ""
+    try:
+        with open(file_path, "rb") as f:
+            reader = PyPDF2.PdfReader(f)
+            for page in reader.pages:
+                text += page.extract_text() + "\n"
+    except Exception as e:
+        st.error(f"❌ خطأ في قراءة ملف PDF: {e}")
+    return text
 
-# ===== Groq LLM مخصص (معطل البحث المتقدم) =====
-class GroqLLM:
-    def __init__(self, api_key: str, model_name: str = "llama3-8b-8192"):
-        self.api_key = api_key
-        self.model_name = model_name
-
-    def run(self, prompt: str) -> str:
-        return "⚠️ ميزة البحث المتقدم مع Groq غير مفعلة في النسخة الحالية."
+# ===== تحويل النص إلى صوت =====
+def text_to_speech(text, filename="output.mp3"):
+    try:
+        tts = gTTS(text=text, lang="en")
+        tts.save(filename)
+        return filename
+    except Exception as e:
+        st.error(f"❌ خطأ في تحويل النص إلى صوت: {e}")
+        return None
 
 # ===== التطبيق الرئيسي =====
 def main():
@@ -77,21 +82,21 @@ def main():
         image_file = st.file_uploader("Image", type=["png", "jpg", "jpeg"])
 
     # التعامل مع PDF
+    pdf_text = ""
     if pdf_file:
-        with st.spinner("📄 Loading the file..."):
+        with st.spinner("📄 Extracting text from PDF..."):
             with open("temp_medical.pdf", "wb") as f:
                 f.write(pdf_file.read())
-            docs = load_medical_docs("temp_medical.pdf")
-            st.success(f"✅ PDF loaded successfully ({len(docs)} pages/chunks).")
+            pdf_text = extract_text_from_pdf("temp_medical.pdf")
+            st.text_area("📄 PDF Text", pdf_text, height=300)
 
     # التعامل مع صورة
     if image_file:
         image = Image.open(image_file)
         st.image(image, caption="The uploaded image", use_container_width=True)
-        st.info("📝 ميزة استخراج النص من الصور ستكون متاحة قريباً")
 
     # إدخال اسم الدواء أو كلمة مفتاحية
-    query = st.text_input("Write drug name:")
+    query = st.text_input("Write drug name or keyword:")
     if query:
         if drugs_df is not None and keywords_df is not None:
             kind, result_df = search_in_excel(query, drugs_df, keywords_df)
@@ -102,7 +107,14 @@ def main():
                     st.success(f"✅ Found related drug(s) for your keyword")
                 st.dataframe(result_df)
             else:
-                st.warning("⚠️ لم يتم العثور على معلومات في Excel. ميزة البحث المتقدم غير متاحة.")
+                st.warning("⚠️ لم يتم العثور على نتيجة في Excel.")
+
+    # تحويل النص الموجود في PDF إلى صوت
+    if pdf_text:
+        if st.button("🔊 Convert PDF text to speech"):
+            audio_file = text_to_speech(pdf_text)
+            if audio_file:
+                st.audio(audio_file, format="audio/mp3")
 
 if __name__ == "__main__":
     main()
