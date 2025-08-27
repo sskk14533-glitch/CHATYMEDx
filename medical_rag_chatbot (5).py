@@ -112,8 +112,17 @@ def update_index(new_docs):
 # ===== إنشاء نظام الأسئلة والأجوبة =====
 def build_qa_system(faiss_index):
     retriever = faiss_index.as_retriever(search_type="similarity", k=4)
-    llm = ChatGroq(api_key=os.getenv("GROQ_API_KEY"), model_name="llama3-8b-8192")
+    
+    # ✅ قراءة المفتاح من Streamlit Secrets بدل os.getenv
+    api_key = st.secrets["GROQ_API_KEY"]
+
+    llm = ChatGroq(
+        api_key=api_key,
+        model_name="llama3-8b-8192"
+    )
+
     return RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+
 
 # ===== استخراج النص من الصور =====
 def extract_text_from_image(image):
