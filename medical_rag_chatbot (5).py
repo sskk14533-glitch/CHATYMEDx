@@ -2,7 +2,6 @@
 import os
 import streamlit as st
 import pickle
-import pytesseract
 from PIL import Image
 from langdetect import detect
 import pandas as pd
@@ -123,13 +122,10 @@ def build_qa_system(faiss_index):
     llm = ChatGroq(api_key=os.getenv("GROQ_API_KEY"), model_name="llama3-8b-8192")
     return RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
-# ===== استخراج النص من الصور =====
+# ===== استخراج النص من الصور معطل =====
 def extract_text_from_image(image):
-    try:
-        return pytesseract.image_to_string(image, lang="ara+eng")
-    except Exception as e:
-        st.error(f"❌ خطأ في استخراج النص من الصورة: {e}")
-        return ""
+    st.warning("⚠️ ميزة استخراج النص من الصور غير متاحة حالياً")
+    return ""
 
 # ===== الكشف عن اللغة =====
 def detect_language(text):
@@ -220,12 +216,7 @@ def main():
     if image_file:
         image = Image.open(image_file)
         st.image(image, caption="The uploaded image", use_container_width=True)
-        with st.spinner("🧠 Extracting text from image..."):
-            extracted_text = extract_text_from_image(image)
-            if extracted_text.strip():
-                st.text_area("Extracted text from image:", value=extracted_text, height=150)
-            else:
-                st.warning("⚠️ لم يتم استخراج نص من الصورة.")
+        st.info("📝 ميزة استخراج النص من الصور ستكون متاحة قريباً")
 
     # ===== إدخال اسم الدواء أو كلمة مفتاحية =====
     query = st.text_input("Write drug name:")
@@ -261,7 +252,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
