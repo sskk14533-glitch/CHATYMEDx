@@ -4,7 +4,7 @@ import streamlit as st
 from PIL import Image
 import pandas as pd
 
-EXCEL_PATH = "Book3.xlsx"
+EXCEL_PATH = "Book3 (2).xlsx"
 
 # ===== تحميل بيانات الأدوية من Excel =====
 @st.cache_data
