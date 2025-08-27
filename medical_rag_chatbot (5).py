@@ -3,13 +3,7 @@ import os
 import streamlit as st
 from PIL import Image
 import pandas as pd
-import subprocess
-import sys
-
-subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
-
 EXCEL_PATH = "Book3 (2).xlsx"
-
 # ===== تحميل بيانات الأدوية من Excel =====
 @st.cache_data
 def load_drugs_data(excel_path):
