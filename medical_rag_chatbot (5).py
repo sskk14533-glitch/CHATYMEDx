@@ -3,7 +3,6 @@ import os
 import streamlit as st
 from PIL import Image
 import pandas as pd
-from pypdf import PdfReader  # استخدم pypdf بدل PyPDF2
 
 EXCEL_PATH = "Book3.xlsx"
 
@@ -37,17 +36,7 @@ def search_in_excel(query, drugs_df, keywords_df):
             return "keyword", kw_match.drop(columns=["keyword"], errors="ignore")
     return None, None
 
-# ===== تحميل PDF =====
-def load_pdf_text(file_path):
-    try:
-        text = ""
-        reader = PdfReader(file_path)
-        for page in reader.pages:
-            text += page.extract_text() + "\n"
-        return text
-    except Exception as e:
-        st.error(f"❌ خطأ في قراءة ملف PDF: {e}")
-        return ""
+
 
 # ===== التطبيق الرئيسي =====
 def main():
@@ -68,14 +57,7 @@ def main():
         st.markdown("### 🖼️ Upload your image:")
         image_file = st.file_uploader("Image", type=["png", "jpg", "jpeg"])
 
-    # التعامل مع PDF
-    if pdf_file:
-        with st.spinner("📄 Loading PDF..."):
-            with open("temp_medical.pdf", "wb") as f:
-                f.write(pdf_file.read())
-            pdf_text = load_pdf_text("temp_medical.pdf")
-            st.success(f"✅ PDF loaded with {len(pdf_text.splitlines())} lines.")
-            st.text_area("PDF content preview:", pdf_text[:2000], height=300)
+    
 
     # التعامل مع الصور
     if image_file:
