@@ -4,7 +4,7 @@ import streamlit as st
 import pickle
 from PIL import Image
 import pandas as pd
-from langchain_community.vectorstores import FAISS
+from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.document_loaders import PyPDFLoader
