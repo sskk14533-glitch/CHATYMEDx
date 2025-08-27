@@ -3,6 +3,10 @@ import os
 import streamlit as st
 from PIL import Image
 import pandas as pd
+import subprocess
+import sys
+
+subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
 
 EXCEL_PATH = "Book3 (2).xlsx"
 
