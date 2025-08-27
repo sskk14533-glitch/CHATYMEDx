@@ -4,16 +4,12 @@ openpyxl==3.1.2
 pillow==10.1.0
 pytesseract==0.3.10
 langdetect==1.0.9
-sentence-transformers==2.2.2
-langchain==0.1.83   # نسخة حديثة تدعم Chroma
-chromadb==0.4.1
 gtts==2.4.0
 pypdf2==3.0.1
 pypdf==3.0.1
-transformers==4.35.2
-torch==2.1.1+cpu --find-links https://download.pytorch.org/whl/torch_stable.html
-numpy==1.24.3
 requests==2.31.0
+
+
 
 
 
